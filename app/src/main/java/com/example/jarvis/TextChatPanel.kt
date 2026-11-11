@@ -31,7 +31,25 @@ private data class ChatMessage(
 
 @Composable
 fun TextChatPanel(context: Context) {
-    val messages = remember { mutableStateListOf<ChatMessage>() }
+    val preferences = remember(context) {
+        context.getSharedPreferences("jarvis", Context.MODE_PRIVATE)
+    }
+    val messages = remember(preferences) {
+        mutableStateListOf<ChatMessage>().apply {
+            val saved = preferences.getString("chat_history", "[]") ?: "[]"
+            runCatching {
+                val array = JSONArray(saved)
+                for (index in 0 until array.length()) {
+                    val item = array.optJSONObject(index) ?: continue
+                    val role = item.optString("role")
+                    val content = item.optString("content")
+                    if ((role == "user" || role == "assistant") && content.isNotBlank()) {
+                        add(ChatMessage(role, content))
+                    }
+                }
+            }
+        }
+    }
     var input by remember { mutableStateOf("") }
     var sending by remember { mutableStateOf(false) }
 
@@ -45,6 +63,16 @@ fun TextChatPanel(context: Context) {
     }
 
     LaunchedEffect(messages.size) {
+        val savedMessages = JSONArray()
+        messages.takeLast(50).forEach { message ->
+            savedMessages.put(
+                JSONObject()
+                    .put("role", message.role)
+                    .put("content", message.content)
+            )
+        }
+        preferences.edit().putString("chat_history", savedMessages.toString()).apply()
+
         if (messages.isNotEmpty()) {
             scope.launch {
                 listState.animateScrollToItem(messages.lastIndex)
@@ -59,11 +87,26 @@ fun TextChatPanel(context: Context) {
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Text(
-            "JARVIS TEXT CHAT",
-            color = Color(0xFF53D9FF),
-            fontSize = 16.sp
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                "JARVIS TEXT CHAT",
+                color = Color(0xFF53D9FF),
+                fontSize = 16.sp
+            )
+            TextButton(
+                onClick = {
+                    messages.clear()
+                    preferences.edit().remove("chat_history").apply()
+                },
+                enabled = messages.isNotEmpty() && !sending
+            ) {
+                Text("Clear history")
+            }
+        }
 
         LazyColumn(
             state = listState,
@@ -142,7 +185,7 @@ fun TextChatPanel(context: Context) {
                     input = ""
                     sending = true
 
-                    val history = messages.toList()
+                    val history = messages.takeLast(12)
 
                     executor.execute {
                         val answer = try {

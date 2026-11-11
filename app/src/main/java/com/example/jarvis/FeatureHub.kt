@@ -183,14 +183,15 @@ private val jarvisFeatures = listOf(
     JarvisFeature(110,"Phone control","Read battery level","Voice command: “Battery status.”","info","Say: battery status."),
     JarvisFeature(111,"Reminders & calendar","Set timer by voice","Voice command: “Set timer for 5 minutes.” Opens Clock for confirmation.","info","Say: set timer for 5 minutes."),
     JarvisFeature(112,"Reminders & calendar","Set alarm by voice","Voice command: “Set alarm for 7:30 PM.” Opens Clock for confirmation.","info","Say: set alarm for 7:30 PM."),
-    JarvisFeature(113,"Phone control","Call a saved contact","Voice command: “Call Kamil.” Opens dialer; you confirm the call.","info","Say: call a saved contact by name.")
+    JarvisFeature(113,"Phone control","Call a saved contact","Voice command: “Call Kamil.” Opens dialer; you confirm the call.","info","Say: call a saved contact by name."),
+    JarvisFeature(114,"AI intelligence","Saved text chat history","JARVIS keeps up to 50 recent text chat messages on this device. Clear history removes them.","info","Your text chat history is stored locally on this device.")
 )
 
 @Composable
 fun FeatureHub(context: Context) {
     var filter by remember { mutableStateOf("") }
     var selectedGroup by remember { mutableStateOf("All") }
-    var feedback by remember { mutableStateOf("113 capability entry points") }
+    var feedback by remember { mutableStateOf("114 capability entry points") }
     var prompt by remember { mutableStateOf("") }
 
     val groups = listOf("All") + jarvisFeatures.map { it.group }.distinct()
@@ -207,7 +208,7 @@ fun FeatureHub(context: Context) {
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text("JARVIS FEATURE SYSTEM", color = Color(0xFF53D9FF), fontSize = 20.sp)
-        Text("113 capability entry points • Android permission and app support applies",
+        Text("114 capability entry points • Android permission and app support applies",
             color = Color.LightGray, fontSize = 12.sp)
 
         OutlinedTextField(
@@ -219,7 +220,7 @@ fun FeatureHub(context: Context) {
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Button(onClick = { selectedGroup = "All" }) { Text("All 113") }
+            Button(onClick = { selectedGroup = "All" }) { Text("All 114") }
             Button(onClick = { selectedGroup = "Voice & wake word" }) { Text("Voice") }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
