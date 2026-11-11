@@ -276,8 +276,9 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
                                         if (wakeModeEnabled && !listening) startListening()
                                     }, 400)
                                 }
-                            } else if (lower.startsWith("hey jarvis")) {
-                                val command = normalized.substringAfter("hey jarvis").trim()
+                            } else if (lower.startsWith("hey jarvis") || lower.startsWith("हे जार्विस")) {
+                                val wakePhrase = if (lower.startsWith("हे जार्विस")) "हे जार्विस" else "hey jarvis"
+                                val command = normalized.drop(wakePhrase.length).trim()
                                 if (command.isBlank()) {
                                     awaitingWakeCommand = true
                                     resumeWakeAfterSpeech = true
