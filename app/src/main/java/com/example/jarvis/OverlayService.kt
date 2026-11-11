@@ -261,7 +261,7 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
                         putExtra(RecognizerIntent.EXTRA_ENABLE_LANGUAGE_DETECTION, true)
                         putExtra(
                             RecognizerIntent.EXTRA_ENABLE_LANGUAGE_SWITCH,
-                            SpeechRecognizer.LANGUAGE_SWITCH_BALANCED
+                            RecognizerIntent.LANGUAGE_SWITCH_BALANCED
                         )
                         putExtra(
                             RecognizerIntent.EXTRA_LANGUAGE_DETECTION_ALLOWED_LANGUAGES,
