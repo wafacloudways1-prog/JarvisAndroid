@@ -33,20 +33,9 @@ private const val DEFAULT_AI_ENDPOINT =
 
 class MainActivity : ComponentActivity() {
 
-    private val permissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val permissions = mutableListOf(Manifest.permission.RECORD_AUDIO)
-
-        if (Build.VERSION.SDK_INT >= 33) {
-            permissions += Manifest.permission.POST_NOTIFICATIONS
-        }
-
-        permissionLauncher.launch(permissions.toTypedArray())
 
         setContent {
             JarvisTheme {
@@ -56,6 +45,16 @@ class MainActivity : ComponentActivity() {
 
                 var overlayOn by remember {
                     mutableStateOf(false)
+                }
+
+                val permissionsLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.RequestMultiplePermissions()
+                ) { results ->
+                    status = if (results.values.all { it }) {
+                        "Requested permissions granted."
+                    } else {
+                        "Some permissions were denied. Enable them in Android Settings if you want those features."
+                    }
                 }
 
                 Surface(
@@ -121,9 +120,29 @@ class MainActivity : ComponentActivity() {
 
                         Spacer(Modifier.height(24.dp))
 
+                        OutlinedButton(
+                            onClick = {
+                                val requested = mutableListOf(Manifest.permission.RECORD_AUDIO)
+                                if (Build.VERSION.SDK_INT >= 33) {
+                                    requested += Manifest.permission.POST_NOTIFICATIONS
+                                }
+                                permissionsLauncher.launch(requested.toTypedArray())
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Request microphone & notification permissions")
+                        }
+
                         Button(
                             onClick = {
-                                if (!Settings.canDrawOverlays(this@MainActivity)) {
+                                if (ContextCompat.checkSelfPermission(
+                                        this@MainActivity,
+                                        Manifest.permission.RECORD_AUDIO
+                                    ) != PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    permissionsLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
+                                    status = "Allow microphone access, then tap Start floating assistant again."
+                                } else if (!Settings.canDrawOverlays(this@MainActivity)) {
                                     startActivity(
                                         Intent(
                                             Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
@@ -187,7 +206,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         Text(
-                            "Wake phrase works during an active listening session.",
+                            "Android special access (floating overlay and optional screen reading) must be enabled in Settings. Other permissions are requested only when a feature needs them.",
                             color = Color.Gray,
                             fontSize = 11.sp
                         )
