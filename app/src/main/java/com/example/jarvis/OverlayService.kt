@@ -572,7 +572,7 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
             ContactsContract.CommonDataKinds.Phone.NUMBER
         )
         val matches = mutableListOf<Pair<String, String>>()
-        val selection = "\${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ?"
+        val selection = "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ?"
         contentResolver.query(
             ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
             projection,
@@ -609,10 +609,10 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
             return true
         }
 
-        val uri = Uri.parse("https://wa.me/$digits?text=\${Uri.encode(message)}")
+        val uri = Uri.parse("https://wa.me/$digits?text=${Uri.encode(message)}")
         val intent = Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         startActivity(intent)
-        speak("I prepared a WhatsApp message to \${chosen.first}. Please review it and tap Send.")
+        speak("I prepared a WhatsApp message to ${chosen.first}. Please review it and tap Send.")
         return true
     }
 
