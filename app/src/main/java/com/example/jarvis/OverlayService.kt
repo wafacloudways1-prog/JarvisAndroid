@@ -90,7 +90,7 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
 
         val notification = Notification.Builder(this, CHANNEL_ID)
             .setContentTitle("JARVIS is ready")
-            .setContentText("Tap the floating orb to enable Hey JARVIS wake mode.")
+            .setContentText("Tap the orb for a command. Long-press for Hey JARVIS wake mode.")
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setOngoing(true)
             .build()
@@ -112,9 +112,9 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
 
     private fun updateWakeNotification() {
         val message = if (wakeModeEnabled) {
-            "Hey JARVIS wake mode is ON. Tap the orb to turn listening off."
+            "Hey JARVIS wake mode is ON. Tap the orb to disable it."
         } else {
-            "Wake mode is OFF. Tap the orb to enable Hey JARVIS."
+            "Wake mode is OFF. Tap for a command; long-press for wake mode."
         }
         val notification = Notification.Builder(this, CHANNEL_ID)
             .setContentTitle("JARVIS assistant")
@@ -153,22 +153,30 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
                     setWakeActive(false)
                     speak("Hey JARVIS wake mode is off.")
                 } else {
-                    wakeModeEnabled = true
-                    awaitingWakeCommand = false
-                    updateWakeNotification()
-                    setWakeActive(true)
-                    speak("Hey JARVIS wake mode is on. Say Hey JARVIS followed by your command.")
-                    mainHandler.postDelayed({
-                        if (wakeModeEnabled && !listening) startListening()
-                    }, 2400)
+                    startListening()
                 }
             }
 
             setOnLongClickListener {
-                wakeModeEnabled = false
-                awaitingWakeCommand = false
-                speak("JARVIS is shutting down.")
-                stopSelf()
+                if (wakeModeEnabled) {
+                    wakeModeEnabled = false
+                    awaitingWakeCommand = false
+                    resumeWakeAfterSpeech = false
+                    listening = false
+                    speech?.cancel()
+                    setWakeActive(false)
+                    updateWakeNotification()
+                    speak("Wake mode is off.")
+                } else {
+                    wakeModeEnabled = true
+                    awaitingWakeCommand = false
+                    setWakeActive(true)
+                    updateWakeNotification()
+                    speak("Hey JARVIS wake mode is on. Say Hey JARVIS followed by your command.")
+                    mainHandler.postDelayed({
+                        if (wakeModeEnabled && !listening) startListening()
+                    }, 1800)
+                }
                 true
             }
         }
@@ -181,9 +189,10 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
                 WindowManager.LayoutParams.TYPE_PHONE
             }
 
+        val orbSize = (84 * resources.displayMetrics.density).toInt()
         val params = WindowManager.LayoutParams(
-            64,
-            64,
+            orbSize,
+            orbSize,
             type,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
@@ -224,7 +233,7 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
         }
 
         listening = true
-        speak("Listening.")
+        Toast.makeText(this, "JARVIS is listening. Speak now.", Toast.LENGTH_SHORT).show()
 
         try {
             speech?.destroy()
