@@ -810,6 +810,10 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
             ) {
                 tts?.setLanguage(Locale.US)
             }
+
+            val prefs = getSharedPreferences("jarvis", MODE_PRIVATE)
+            tts?.setSpeechRate(prefs.getFloat("speech_rate", 0.92f))
+            tts?.setPitch(prefs.getFloat("speech_pitch", 1.0f))
         }
     }
 
