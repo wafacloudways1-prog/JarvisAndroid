@@ -225,6 +225,12 @@ class AiSettingsActivity : ComponentActivity() {
                     mutableStateOf("Gemini Worker connection")
                 }
 
+                var speechLanguage by remember {
+                    mutableStateOf(
+                        prefs.getString("speech_language", "auto") ?: "auto"
+                    )
+                }
+
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -250,6 +256,36 @@ class AiSettingsActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
+
+                    Text(
+                        "Speech and reply language",
+                        color = Color.White,
+                        fontSize = 16.sp
+                    )
+
+                    listOf(
+                        "auto" to "Auto-detect",
+                        "en" to "English",
+                        "hi" to "Hindi",
+                        "hinglish" to "Hinglish"
+                    ).forEach { (value, label) ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = speechLanguage == value,
+                                onClick = {
+                                    speechLanguage = value
+                                    prefs.edit()
+                                        .putString("speech_language", value)
+                                        .apply()
+                                    status = "$label selected. Restart the floating assistant to apply voice changes."
+                                }
+                            )
+                            Text(label, color = Color.LightGray)
+                        }
+                    }
 
                     Button(
                         onClick = {
