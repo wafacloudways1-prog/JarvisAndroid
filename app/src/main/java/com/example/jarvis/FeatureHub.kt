@@ -219,7 +219,7 @@ fun FeatureHub(context: Context) {
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Button(onClick = { selectedGroup = "All" }) { Text("All 107") }
+            Button(onClick = { selectedGroup = "All" }) { Text("All 113") }
             Button(onClick = { selectedGroup = "Voice & wake word" }) { Text("Voice") }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

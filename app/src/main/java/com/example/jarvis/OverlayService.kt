@@ -873,7 +873,12 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
 
             if (responseCode !in 200..299) {
                 conversation.remove(conversation.length() - 1)
-                return null
+                return when (responseCode) {
+                    401, 403 -> "The AI provider rejected its credentials. Please check the Cloudflare secret."
+                    429 -> "Groq's free usage limit has been reached. Please try again later."
+                    502, 503, 504 -> "The AI provider is temporarily unavailable. Please try again shortly."
+                    else -> "The AI service returned error $responseCode. Please try again."
+                }
             }
 
             val answer = JSONObject(responseText)
