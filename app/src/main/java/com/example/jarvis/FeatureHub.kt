@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -283,7 +284,7 @@ private fun runFeature(context: Context, feature: JarvisFeature, input: String):
     val intent = when (feature.action) {
         "info" -> return feature.argument
         "voice" -> return "Tap the floating JARVIS orb to start voice recognition."
-        "tts" -> Intent(Settings.ACTION_TEXT_TO_SPEECH_SETTINGS)
+        "tts" -> Intent(Settings.ACTION_SETTINGS)
         "language" -> {
             context.getSharedPreferences("jarvis", Context.MODE_PRIVATE)
                 .edit().putString("speech_language", feature.argument).apply()
