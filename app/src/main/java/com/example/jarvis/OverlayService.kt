@@ -258,8 +258,8 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
                         speechLocale.toLanguageTag()
                     )
                     if (Build.VERSION.SDK_INT >= 34 && language == "auto") {
-                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_DETECTION_ALLOWED, true)
-                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_SWITCH_ALLOWED, true)
+                        putExtra(RecognizerIntent.EXTRA_ENABLE_LANGUAGE_DETECTION, true)
+                        putExtra(RecognizerIntent.EXTRA_ENABLE_LANGUAGE_SWITCH, true)
                     }
                     putExtra(
                         RecognizerIntent.EXTRA_PARTIAL_RESULTS,
