@@ -778,6 +778,22 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
                 Toast.LENGTH_LONG
             ).show()
 
+            val language = getSharedPreferences("jarvis", MODE_PRIVATE)
+                .getString("speech_language", "auto") ?: "auto"
+            val containsHindiScript = text.any { it in '\u0900'..'\u097F' }
+            val utteranceLocale = when (language) {
+                "hi" -> Locale("hi", "IN")
+                "en" -> Locale("en", "IN")
+                "hinglish" -> if (containsHindiScript) Locale("hi", "IN") else Locale("en", "IN")
+                else -> if (containsHindiScript) Locale("hi", "IN") else Locale("en", "IN")
+            }
+            val languageResult = tts?.setLanguage(utteranceLocale)
+            if (languageResult == TextToSpeech.LANG_MISSING_DATA ||
+                languageResult == TextToSpeech.LANG_NOT_SUPPORTED
+            ) {
+                tts?.setLanguage(Locale("en", "IN"))
+            }
+
             tts?.speak(
                 text,
                 TextToSpeech.QUEUE_FLUSH,
@@ -812,8 +828,8 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
             }
 
             val prefs = getSharedPreferences("jarvis", MODE_PRIVATE)
-            tts?.setSpeechRate(prefs.getFloat("speech_rate", 0.92f))
-            tts?.setPitch(prefs.getFloat("speech_pitch", 1.0f))
+            tts?.setSpeechRate(prefs.getFloat("speech_rate", 0.90f))
+            tts?.setPitch(prefs.getFloat("speech_pitch", 0.88f))
         }
     }
 
