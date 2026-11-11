@@ -397,6 +397,72 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
 
         return try {
             when {
+                // YouTube search commands. These open results; they do not autoplay videos.
+                c.startsWith("search youtube for ") ||
+                    c.startsWith("youtube search ") ||
+                    (c.startsWith("search ") && c.endsWith(" on youtube")) ||
+                    (c.startsWith("play ") && c.endsWith(" on youtube")) ||
+                    (c.startsWith("open youtube") && c.contains(" search ")) -> {
+                    val query = when {
+                        c.startsWith("search youtube for ") ->
+                            command.drop("search youtube for ".length).trim()
+                        c.startsWith("youtube search ") ->
+                            command.drop("youtube search ".length).trim()
+                        c.startsWith("search ") && c.endsWith(" on youtube") ->
+                            command.substring(7, command.length - " on youtube".length).trim()
+                        c.startsWith("play ") ->
+                            command.substring(5, command.length - " on youtube".length).trim()
+                        else ->
+                            command.substringAfter("search", "").trim()
+                                .removePrefix("for ").trim()
+                    }
+                    openSearchResults(query, true)
+                    true
+                }
+
+                // Google/web search commands.
+                c.startsWith("search google for ") ||
+                    c.startsWith("google for ") ||
+                    c.startsWith("search for ") ||
+                    c.startsWith("look up ") ||
+                    c.startsWith("search ") ||
+                    c.startsWith("google ") -> {
+                    val prefixes = listOf(
+                        "search google for ", "google for ", "search for ",
+                        "look up ", "search ", "google "
+                    )
+                    val prefix = prefixes.first { c.startsWith(it) }
+                    val query = command.drop(prefix.length).trim()
+                    openSearchResults(query, false)
+                    true
+                }
+
+                // A natural-language shortcut for opening a chat app.
+                c == "open chat" || c == "open whatsapp chat" ||
+                    c == "open my chats" || c == "open messages" -> {
+                    val target = if (c == "open messages") {
+                        findLaunchIntent("Messages") ?: findLaunchIntent("WhatsApp")
+                    } else {
+                        findLaunchIntent("WhatsApp") ?: findLaunchIntent("Messages")
+                    }
+                    if (target != null) {
+                        target.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        startActivity(target)
+                        speak(if (c == "open messages") "Opening messages." else "Opening your chats.")
+                    } else {
+                        speak("I couldn't find WhatsApp or a messaging app.")
+                    }
+                    true
+                }
+
+                // "Open YouTube and search for ..." is one spoken command.
+                c.startsWith("open youtube and search ") -> {
+                    val query = command.substringAfter("search ").trim()
+                        .removePrefix("for ").trim()
+                    openSearchResults(query, true)
+                    true
+                }
+
                 c.startsWith("open ") -> {
                     val appName = command.substringAfter("open ").trim()
                     val launch = findLaunchIntent(appName)
@@ -407,26 +473,6 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
                         speak("Opening $appName.")
                     } else {
                         speak("I couldn't find that app.")
-                    }
-                    true
-                }
-
-                c.startsWith("search ") || c.startsWith("google ") -> {
-                    val query = command.substringAfter(" ").trim()
-
-                    if (query.isBlank()) {
-                        speak("What should I search for?")
-                    } else {
-                        val intent = Intent(
-                            Intent.ACTION_VIEW,
-                            Uri.parse(
-                                "https://www.google.com/search?q=" +
-                                    Uri.encode(query)
-                            )
-                        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-
-                        startActivity(intent)
-                        speak("Opening search results.")
                     }
                     true
                 }
@@ -496,6 +542,26 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
             speak("I couldn't complete that phone action.")
             true
         }
+    }
+
+    private fun openSearchResults(query: String, youtube: Boolean) {
+        if (query.isBlank()) {
+            speak(if (youtube) "What should I search for on YouTube?" else "What should I search for?")
+            return
+        }
+
+        val baseUrl = if (youtube) {
+            "https://www.youtube.com/results?search_query="
+        } else {
+            "https://www.google.com/search?q="
+        }
+        val intent = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse(baseUrl + Uri.encode(query))
+        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+        startActivity(intent)
+        speak(if (youtube) "Searching YouTube for $query." else "Searching the web for $query.")
     }
 
     private fun findLaunchIntent(name: String): Intent? {
