@@ -312,6 +312,41 @@ class AiSettingsActivity : ComponentActivity() {
                         }
                     }
 
+                    var speechRate by remember {
+                        mutableFloatStateOf(prefs.getFloat("speech_rate", 0.92f))
+                    }
+                    var speechPitch by remember {
+                        mutableFloatStateOf(prefs.getFloat("speech_pitch", 1.0f))
+                    }
+
+                    Divider(color = Color.DarkGray)
+                    Text("JARVIS voice clarity", color = Color(0xFF53D9FF), fontSize = 18.sp)
+                    Text("Speech speed: ${"%.2f".format(speechRate)}", color = Color.LightGray)
+                    Slider(
+                        value = speechRate,
+                        onValueChange = {
+                            speechRate = it
+                            prefs.edit().putFloat("speech_rate", it).apply()
+                        },
+                        valueRange = 0.75f..1.15f,
+                        steps = 7
+                    )
+                    Text("Voice pitch: ${"%.2f".format(speechPitch)}", color = Color.LightGray)
+                    Slider(
+                        value = speechPitch,
+                        onValueChange = {
+                            speechPitch = it
+                            prefs.edit().putFloat("speech_pitch", it).apply()
+                        },
+                        valueRange = 0.8f..1.2f,
+                        steps = 7
+                    )
+                    Text(
+                        "For clearer speech, start around 0.90–0.95 speed and 1.0 pitch. Actual voice quality depends on the speech engine installed on your phone.",
+                        color = Color.Gray,
+                        fontSize = 12.sp
+                    )
+
                     Button(
                         onClick = {
                             val cleanEndpoint = endpoint.trim()
