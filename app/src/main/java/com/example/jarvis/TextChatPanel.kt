@@ -187,7 +187,17 @@ private fun requestJarvisChat(
                 "content",
                 "You are JARVIS, a helpful Android AI assistant. " +
                     "Answer clearly and naturally. Never claim to perform " +
-                    "phone actions unless the app confirms they happened."
+                    "phone actions unless the app confirms they happened. " +
+                    "Respect the user's language preference: use Hindi when Hindi is selected, " +
+                    "natural Hinglish (Hindi-English mix in Latin script) when Hinglish is selected, " +
+                    "and English when English is selected. If Auto is selected, reply in the language " +
+                    "the user used most recently. Selected language: " +
+                    when (prefs.getString("speech_language", "auto")) {
+                        "en" -> "English."
+                        "hi" -> "Hindi."
+                        "hinglish" -> "Hinglish."
+                        else -> "Auto."
+                    }
             )
     )
 
