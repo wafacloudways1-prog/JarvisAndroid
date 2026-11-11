@@ -175,14 +175,22 @@ private val jarvisFeatures = listOf(
     JarvisFeature(104,"Maps & navigation","Find petrol stations","Search Maps for petrol stations.","maps_query","petrol stations"),
     JarvisFeature(105,"Maps & navigation","Find hospitals","Search Maps for hospitals.","maps_query","hospitals"),
     JarvisFeature(106,"Maps & navigation","Find restaurants","Search Maps for restaurants.","maps_query","restaurants"),
-    JarvisFeature(107,"Maps & navigation","Find ATMs","Search Maps for ATMs.","maps_query","ATMs")
+    JarvisFeature(107,"Maps & navigation","Find ATMs","Search Maps for ATMs.","maps_query","ATMs"),
+
+    // VOICE COMMANDS (108-113)
+    JarvisFeature(108,"Phone control","Tell current time","Voice command: “What time is it?”","info","Say: what time is it."),
+    JarvisFeature(109,"Phone control","Tell today's date","Voice command: “What's today's date?”","info","Say: what's today's date."),
+    JarvisFeature(110,"Phone control","Read battery level","Voice command: “Battery status.”","info","Say: battery status."),
+    JarvisFeature(111,"Reminders & calendar","Set timer by voice","Voice command: “Set timer for 5 minutes.” Opens Clock for confirmation.","info","Say: set timer for 5 minutes."),
+    JarvisFeature(112,"Reminders & calendar","Set alarm by voice","Voice command: “Set alarm for 7:30 PM.” Opens Clock for confirmation.","info","Say: set alarm for 7:30 PM."),
+    JarvisFeature(113,"Phone control","Call a saved contact","Voice command: “Call Kamil.” Opens dialer; you confirm the call.","info","Say: call a saved contact by name.")
 )
 
 @Composable
 fun FeatureHub(context: Context) {
     var filter by remember { mutableStateOf("") }
     var selectedGroup by remember { mutableStateOf("All") }
-    var feedback by remember { mutableStateOf("107 capability entry points") }
+    var feedback by remember { mutableStateOf("113 capability entry points") }
     var prompt by remember { mutableStateOf("") }
 
     val groups = listOf("All") + jarvisFeatures.map { it.group }.distinct()
@@ -199,7 +207,7 @@ fun FeatureHub(context: Context) {
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text("JARVIS FEATURE SYSTEM", color = Color(0xFF53D9FF), fontSize = 20.sp)
-        Text("107 capability entry points • Android permission and app support applies",
+        Text("113 capability entry points • Android permission and app support applies",
             color = Color.LightGray, fontSize = 12.sp)
 
         OutlinedTextField(

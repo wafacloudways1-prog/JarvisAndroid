@@ -18,6 +18,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.provider.Settings
+import android.provider.AlarmClock
 import android.provider.ContactsContract
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
@@ -31,7 +32,10 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
+import android.os.BatteryManager
 import java.util.concurrent.Executors
 
 class OverlayService : Service(), TextToSpeech.OnInitListener {
@@ -396,10 +400,83 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
     private fun executeLocal(command: String): Boolean {
         val c = command.lowercase(Locale.ROOT)
 
-        if (openPreparedWhatsAppMessage(command)) return true
-
         return try {
+            if (openPreparedWhatsAppMessage(command)) return true
+
+            val timerMatch = Regex(
+                """^set (?:a )?timer for (\d+)\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?)$""",
+                RegexOption.IGNORE_CASE
+            ).matchEntire(command)
+            if (timerMatch != null) {
+                val amount = timerMatch.groupValues[1].toLongOrNull() ?: 0L
+                val unit = timerMatch.groupValues[2].lowercase(Locale.ROOT)
+                val multiplier = when {
+                    unit.startsWith("hour") || unit.startsWith("hr") -> 3600L
+                    unit.startsWith("min") -> 60L
+                    else -> 1L
+                }
+                val totalSeconds = amount * multiplier
+                if (amount <= 0L || totalSeconds > 86400L) {
+                    speak("Please choose a timer between one second and 24 hours.")
+                } else {
+                    val timerIntent = Intent(AlarmClock.ACTION_SET_TIMER)
+                        .putExtra(AlarmClock.EXTRA_LENGTH, totalSeconds.toInt())
+                        .putExtra(AlarmClock.EXTRA_MESSAGE, "JARVIS timer")
+                        .putExtra(AlarmClock.EXTRA_SKIP_UI, false)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(timerIntent)
+                    speak("Opening a timer for $amount ${timerMatch.groupValues[2]}. Review and start it in Clock.")
+                }
+                return true
+            }
+
+            val alarmMatch = Regex(
+                """^set (?:an? )?alarm for (\d{1,2})(?::(\d{2}))?\s*(am|pm)?$""",
+                RegexOption.IGNORE_CASE
+            ).matchEntire(command)
+            if (alarmMatch != null) {
+                var hour = alarmMatch.groupValues[1].toIntOrNull() ?: -1
+                val minute = alarmMatch.groupValues[2].takeIf { it.isNotBlank() }?.toIntOrNull() ?: 0
+                val meridiem = alarmMatch.groupValues[3].lowercase(Locale.ROOT)
+                val validHour = if (meridiem.isNotBlank()) hour in 1..12 else hour in 0..23
+                if (!validHour || minute !in 0..59) {
+                    speak("Please say a valid alarm time, such as 7:30 PM or 19:30.")
+                } else {
+                    if (meridiem.isNotBlank()) {
+                        hour = (hour % 12) + if (meridiem == "pm") 12 else 0
+                    }
+                    val alarmIntent = Intent(AlarmClock.ACTION_SET_ALARM)
+                        .putExtra(AlarmClock.EXTRA_HOUR, hour)
+                        .putExtra(AlarmClock.EXTRA_MINUTES, minute)
+                        .putExtra(AlarmClock.EXTRA_SKIP_UI, false)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(alarmIntent)
+                    speak("Opening the alarm editor. Review and save the alarm in Clock.")
+                }
+                return true
+            }
+
             when {
+                c in setOf("what time is it", "tell me the time", "current time", "time") -> {
+                    val currentTime = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date())
+                    speak("The time is $currentTime.")
+                    true
+                }
+
+                c in setOf("what is today's date", "what's today's date", "today's date", "what date is it") -> {
+                    val currentDate = SimpleDateFormat("EEEE, d MMMM yyyy", Locale.getDefault()).format(Date())
+                    speak("Today is $currentDate.")
+                    true
+                }
+
+                c in setOf("battery status", "battery level", "what is my battery", "how much battery") -> {
+                    val batteryManager = getSystemService(BATTERY_SERVICE) as BatteryManager
+                    val level = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+                    if (level in 0..100) speak("Your battery level is $level percent.")
+                    else speak("I couldn't read the battery level on this device.")
+                    true
+                }
+
                 // YouTube search commands. These open results; they do not autoplay videos.
                 c.startsWith("search youtube for ") ||
                     c.startsWith("youtube search ") ||
@@ -481,11 +558,7 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
                 }
 
                 c.startsWith("call ") -> {
-                    val intent = Intent(Intent.ACTION_DIAL)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-
-                    startActivity(intent)
-                    speak("Choose the contact and confirm the call in your dialer.")
+                    openDialerForContact(command.substringAfter("call ").trim())
                     true
                 }
 
@@ -547,6 +620,75 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
         }
     }
 
+
+    private fun openDialerForContact(target: String) {
+        if (target.isBlank()) {
+            startActivity(Intent(Intent.ACTION_DIAL).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            speak("Opening the dialer. Choose a contact and confirm the call.")
+            return
+        }
+
+        val possibleNumber = target.filter { it.isDigit() || it == '+' }
+        if (possibleNumber.count { it.isDigit() } >= 7 &&
+            target.all { it.isDigit() || it == '+' || it == ' ' || it == '-' || it == '(' || it == ')' }
+        ) {
+            startActivity(
+                Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", possibleNumber, null))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+            speak("Opening the dialer. Review the number and confirm the call.")
+            return
+        }
+
+        if (checkSelfPermission(android.Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            speak("Please allow Contacts permission in the JARVIS app to call a saved contact.")
+            return
+        }
+
+        val matches = mutableListOf<Pair<String, String>>()
+        val projection = arrayOf(
+            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+            ContactsContract.CommonDataKinds.Phone.NUMBER
+        )
+        contentResolver.query(
+            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+            projection,
+            "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ?",
+            arrayOf("%$target%"),
+            null
+        )?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+            val numberIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+            while (cursor.moveToNext()) {
+                val name = cursor.getString(nameIndex).orEmpty()
+                val number = cursor.getString(numberIndex).orEmpty()
+                if (number.isNotBlank()) matches.add(name to number)
+            }
+        }
+
+        val exact = matches.filter { it.first.equals(target, ignoreCase = true) }
+        val exactNumbers = exact.map { it.second }.distinct()
+        val allNumbers = matches.map { it.second }.distinct()
+        val chosen = when {
+            exactNumbers.size == 1 -> exact.first()
+            exactNumbers.isEmpty() && allNumbers.size == 1 -> matches.first()
+            else -> null
+        }
+
+        if (chosen == null) {
+            speak(
+                if (matches.isEmpty()) "I couldn't find $target in your contacts."
+                else "I found multiple matching contacts. Please say the full name."
+            )
+            return
+        }
+
+        startActivity(
+            Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", chosen.second, null))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+        speak("Opening the dialer for ${chosen.first}. Review and confirm the call.")
+    }
 
     private fun openPreparedWhatsAppMessage(command: String): Boolean {
         val patterns = listOf(

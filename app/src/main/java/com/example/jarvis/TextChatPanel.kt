@@ -147,8 +147,8 @@ fun TextChatPanel(context: Context) {
                     executor.execute {
                         val answer = try {
                             requestJarvisChat(context, history)
-                        } catch (_: Exception) {
-                            "I couldn't reach the AI service. Please check your internet connection."
+                        } catch (error: Exception) {
+                            "JARVIS couldn't complete that request: ${error.message ?: "unknown error"}"
                         }
 
                         handler.post {
@@ -238,7 +238,23 @@ private fun requestJarvisChat(
         val response = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
 
         if (code !in 200..299) {
-            throw IOException("AI service returned HTTP $code")
+            val providerMessage = try {
+                val errorObject = JSONObject(response).optJSONObject("error")
+                errorObject?.optString("message")?.takeIf { it.isNotBlank() }
+                    ?: JSONObject(response).optString("error").takeIf { it.isNotBlank() }
+            } catch (_: Exception) {
+                null
+            }
+            val friendly = when (code) {
+                401, 403 -> "AI provider rejected its credentials."
+                429 -> "AI provider rate limit or free quota reached."
+                502, 503, 504 -> "AI provider is temporarily unavailable."
+                else -> "AI service returned HTTP $code."
+            }
+            throw IOException(
+                if (providerMessage.isNullOrBlank()) friendly
+                else "$friendly ${providerMessage.take(180)}"
+            )
         }
 
         return JSONObject(response)

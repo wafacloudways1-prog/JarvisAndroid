@@ -132,7 +132,7 @@ class MainActivity : ComponentActivity() {
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Request microphone & notification permissions")
+                            Text("Request microphone, contacts & notification permissions")
                         }
 
                         Button(
@@ -247,7 +247,7 @@ class AiSettingsActivity : ComponentActivity() {
                 }
 
                 var status by remember {
-                    mutableStateOf("Gemini Worker connection")
+                    mutableStateOf("Cloudflare AI Worker connection (Groq)")
                 }
 
                 var speechLanguage by remember {
@@ -270,14 +270,14 @@ class AiSettingsActivity : ComponentActivity() {
                     )
 
                     Text(
-                        "JARVIS uses your Cloudflare Worker to communicate with Gemini.",
+                        "JARVIS uses your Cloudflare Worker to reach Groq AI. Your API key stays on Cloudflare.",
                         color = Color.LightGray
                     )
 
                     OutlinedTextField(
                         value = endpoint,
                         onValueChange = { endpoint = it },
-                        label = { Text("Gemini Worker endpoint") },
+                        label = { Text("Cloudflare AI Worker endpoint") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
