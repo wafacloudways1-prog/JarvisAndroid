@@ -124,7 +124,7 @@ class MainActivity : ComponentActivity() {
 
                         OutlinedButton(
                             onClick = {
-                                val requested = mutableListOf(Manifest.permission.RECORD_AUDIO)
+                                val requested = mutableListOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.READ_CONTACTS)
                                 if (Build.VERSION.SDK_INT >= 33) {
                                     requested += Manifest.permission.POST_NOTIFICATIONS
                                 }
