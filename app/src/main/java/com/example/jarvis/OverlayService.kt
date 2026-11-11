@@ -18,6 +18,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.provider.Settings
+import android.provider.ContactsContract
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -395,6 +396,8 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
     private fun executeLocal(command: String): Boolean {
         val c = command.lowercase(Locale.ROOT)
 
+        if (openPreparedWhatsAppMessage(command)) return true
+
         return try {
             when {
                 // YouTube search commands. These open results; they do not autoplay videos.
@@ -542,6 +545,75 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
             speak("I couldn't complete that phone action.")
             true
         }
+    }
+
+
+    private fun openPreparedWhatsAppMessage(command: String): Boolean {
+        val patterns = listOf(
+            Regex("""^(?:open|start)\s+(?:a\s+)?(?:whatsapp\s+)?chat\s+(?:with\s+)?(.+?)\s+and\s+say\s+(.+?)(?:\s+to\s+(?:him|her|them))?$""", RegexOption.IGNORE_CASE),
+            Regex("""^(?:message|whatsapp)\s+(.+?)\s+(?:saying|and\s+say)\s+(.+)$""", RegexOption.IGNORE_CASE),
+            Regex("""^open\s+chat\s+(.+?)\s+and\s+tell\s+(?:him|her|them)\s+(.+)$""", RegexOption.IGNORE_CASE)
+        )
+        val match = patterns.firstNotNullOfOrNull { it.find(command) } ?: return false
+        val contactName = match.groupValues[1].trim()
+        val message = match.groupValues[2].trim()
+        if (contactName.isBlank() || message.isBlank()) {
+            speak("Tell me the contact name and the message.")
+            return true
+        }
+
+        if (checkSelfPermission(android.Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            speak("Please allow Contacts permission in the JARVIS app first.")
+            return true
+        }
+
+        val projection = arrayOf(
+            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+            ContactsContract.CommonDataKinds.Phone.NUMBER
+        )
+        val matches = mutableListOf<Pair<String, String>>()
+        val selection = "\${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ?"
+        contentResolver.query(
+            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+            projection,
+            selection,
+            arrayOf("%$contactName%"),
+            null
+        )?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+            val numberIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+            while (cursor.moveToNext()) {
+                val name = cursor.getString(nameIndex).orEmpty()
+                val number = cursor.getString(numberIndex).orEmpty()
+                if (number.isNotBlank()) matches.add(name to number)
+            }
+        }
+
+        val exact = matches.filter { it.first.equals(contactName, ignoreCase = true) }
+        val distinctExactNumbers = exact.map { it.second }.distinct()
+        val distinctNumbers = matches.map { it.second }.distinct()
+        val chosen = when {
+            distinctExactNumbers.size == 1 -> exact.first()
+            exact.isEmpty() && distinctNumbers.size == 1 -> matches.first()
+            else -> null
+        }
+
+        if (chosen == null) {
+            speak(if (matches.isEmpty()) "I couldn't find $contactName in your contacts." else "I found multiple matching contacts. Please say the full name.")
+            return true
+        }
+
+        val digits = chosen.second.filter { it.isDigit() }
+        if (digits.length < 8) {
+            speak("That contact's phone number doesn't look complete.")
+            return true
+        }
+
+        val uri = Uri.parse("https://wa.me/$digits?text=\${Uri.encode(message)}")
+        val intent = Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(intent)
+        speak("I prepared a WhatsApp message to \${chosen.first}. Please review it and tap Send.")
+        return true
     }
 
     private fun openSearchResults(query: String, youtube: Boolean) {
