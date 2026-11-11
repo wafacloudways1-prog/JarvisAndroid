@@ -313,10 +313,10 @@ class AiSettingsActivity : ComponentActivity() {
                     }
 
                     var speechRate by remember {
-                        mutableFloatStateOf(prefs.getFloat("speech_rate", 0.92f))
+                        mutableFloatStateOf(prefs.getFloat("speech_rate", 0.90f))
                     }
                     var speechPitch by remember {
-                        mutableFloatStateOf(prefs.getFloat("speech_pitch", 1.0f))
+                        mutableFloatStateOf(prefs.getFloat("speech_pitch", 0.88f))
                     }
 
                     Divider(color = Color.DarkGray)
@@ -346,6 +346,21 @@ class AiSettingsActivity : ComponentActivity() {
                         color = Color.Gray,
                         fontSize = 12.sp
                     )
+
+                    OutlinedButton(
+                        onClick = {
+                            speechRate = 0.90f
+                            speechPitch = 0.88f
+                            prefs.edit()
+                                .putFloat("speech_rate", speechRate)
+                                .putFloat("speech_pitch", speechPitch)
+                                .apply()
+                            status = "Deep JARVIS voice preset saved. Restart the floating assistant to apply it."
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Apply deep JARVIS voice preset")
+                    }
 
                     Button(
                         onClick = {
