@@ -245,10 +245,22 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
                         RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                         RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
                     )
+                    val language = getSharedPreferences("jarvis", MODE_PRIVATE)
+                        .getString("speech_language", "auto") ?: "auto"
+                    val speechLocale = when (language) {
+                        "en" -> Locale("en", "IN")
+                        "hi" -> Locale("hi", "IN")
+                        "hinglish" -> Locale("en", "IN")
+                        else -> Locale.getDefault()
+                    }
                     putExtra(
                         RecognizerIntent.EXTRA_LANGUAGE,
-                        Locale.getDefault()
+                        speechLocale.toLanguageTag()
                     )
+                    if (Build.VERSION.SDK_INT >= 34 && language == "auto") {
+                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_DETECTION_ALLOWED, true)
+                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_SWITCH_ALLOWED, true)
+                    }
                     putExtra(
                         RecognizerIntent.EXTRA_PARTIAL_RESULTS,
                         false
@@ -556,7 +568,15 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            val result = tts?.setLanguage(Locale.getDefault())
+            val language = getSharedPreferences("jarvis", MODE_PRIVATE)
+                .getString("speech_language", "auto") ?: "auto"
+            val speechLocale = when (language) {
+                "en" -> Locale("en", "IN")
+                "hi" -> Locale("hi", "IN")
+                "hinglish" -> Locale("en", "IN")
+                else -> Locale.getDefault()
+            }
+            val result = tts?.setLanguage(speechLocale)
 
             if (result == TextToSpeech.LANG_MISSING_DATA ||
                 result == TextToSpeech.LANG_NOT_SUPPORTED
