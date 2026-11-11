@@ -115,6 +115,10 @@ class MainActivity : ComponentActivity() {
 
                         TextChatPanel(context = this@MainActivity)
 
+                        Spacer(Modifier.height(28.dp))
+
+                        FeatureHub(context = this@MainActivity)
+
                         Spacer(Modifier.height(24.dp))
 
                         Button(
