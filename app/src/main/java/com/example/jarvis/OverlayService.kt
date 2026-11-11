@@ -160,7 +160,7 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
                     speak("Hey JARVIS wake mode is on. Say Hey JARVIS followed by your command.")
                     mainHandler.postDelayed({
                         if (wakeModeEnabled && !listening) startListening()
-                    }, 1200)
+                    }, 2400)
                 }
             }
 
@@ -364,10 +364,8 @@ class OverlayService : Service(), TextToSpeech.OnInitListener {
             return
         }
 
-        if (executeLocal(actualCommand)) {
-            resumeWakeAfterSpeech = wakeModeEnabled
-            return
-        }
+        resumeWakeAfterSpeech = wakeModeEnabled
+        if (executeLocal(actualCommand)) return
 
         if (!wakeModeEnabled) speak("Let me think.")
 
