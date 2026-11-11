@@ -3,14 +3,18 @@ package com.example.jarvis
 import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -31,20 +35,9 @@ private const val DEFAULT_AI_ENDPOINT =
 
 class MainActivity : ComponentActivity() {
 
-    private val permissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val permissions = mutableListOf(Manifest.permission.RECORD_AUDIO)
-
-        if (Build.VERSION.SDK_INT >= 33) {
-            permissions += Manifest.permission.POST_NOTIFICATIONS
-        }
-
-        permissionLauncher.launch(permissions.toTypedArray())
 
         setContent {
             JarvisTheme {
@@ -56,6 +49,16 @@ class MainActivity : ComponentActivity() {
                     mutableStateOf(false)
                 }
 
+                val permissionsLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.RequestMultiplePermissions()
+                ) { results ->
+                    status = if (results.values.all { it }) {
+                        "Requested permissions granted."
+                    } else {
+                        "Some permissions were denied. Enable them in Android Settings if you want those features."
+                    }
+                }
+
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = Color(0xFF050B16)
@@ -63,6 +66,7 @@ class MainActivity : ComponentActivity() {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
                             .padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
@@ -108,11 +112,39 @@ class MainActivity : ComponentActivity() {
 
                         Text(status, color = Color.White)
 
+                        Spacer(Modifier.height(20.dp))
+
+                        TextChatPanel(context = this@MainActivity)
+
+                        Spacer(Modifier.height(28.dp))
+
+                        FeatureHub(context = this@MainActivity)
+
                         Spacer(Modifier.height(24.dp))
+
+                        OutlinedButton(
+                            onClick = {
+                                val requested = mutableListOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.READ_CONTACTS)
+                                if (Build.VERSION.SDK_INT >= 33) {
+                                    requested += Manifest.permission.POST_NOTIFICATIONS
+                                }
+                                permissionsLauncher.launch(requested.toTypedArray())
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Request microphone, contacts & notification permissions")
+                        }
 
                         Button(
                             onClick = {
-                                if (!Settings.canDrawOverlays(this@MainActivity)) {
+                                if (ContextCompat.checkSelfPermission(
+                                        this@MainActivity,
+                                        Manifest.permission.RECORD_AUDIO
+                                    ) != PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    permissionsLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
+                                    status = "Allow microphone access, then tap Start floating assistant again."
+                                } else if (!Settings.canDrawOverlays(this@MainActivity)) {
                                     startActivity(
                                         Intent(
                                             Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
@@ -176,7 +208,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         Text(
-                            "Wake phrase works during an active listening session.",
+                            "Android special access (floating overlay and optional screen reading) must be enabled in Settings. Other permissions are requested only when a feature needs them.",
                             color = Color.Gray,
                             fontSize = 11.sp
                         )
@@ -215,7 +247,13 @@ class AiSettingsActivity : ComponentActivity() {
                 }
 
                 var status by remember {
-                    mutableStateOf("Gemini Worker connection")
+                    mutableStateOf("Cloudflare AI Worker connection (Groq)")
+                }
+
+                var speechLanguage by remember {
+                    mutableStateOf(
+                        prefs.getString("speech_language", "auto") ?: "auto"
+                    )
                 }
 
                 Column(
@@ -232,17 +270,97 @@ class AiSettingsActivity : ComponentActivity() {
                     )
 
                     Text(
-                        "JARVIS uses your Cloudflare Worker to communicate with Gemini.",
+                        "JARVIS uses your Cloudflare Worker to reach Groq AI. Your API key stays on Cloudflare.",
                         color = Color.LightGray
                     )
 
                     OutlinedTextField(
                         value = endpoint,
                         onValueChange = { endpoint = it },
-                        label = { Text("Gemini Worker endpoint") },
+                        label = { Text("Cloudflare AI Worker endpoint") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
+
+                    Text(
+                        "Speech and reply language",
+                        color = Color.White,
+                        fontSize = 16.sp
+                    )
+
+                    listOf(
+                        "auto" to "Auto-detect",
+                        "en" to "English",
+                        "hi" to "Hindi",
+                        "hinglish" to "Hinglish"
+                    ).forEach { (value, label) ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = speechLanguage == value,
+                                onClick = {
+                                    speechLanguage = value
+                                    prefs.edit()
+                                        .putString("speech_language", value)
+                                        .apply()
+                                    status = "$label selected. Restart the floating assistant to apply voice changes."
+                                }
+                            )
+                            Text(label, color = Color.LightGray)
+                        }
+                    }
+
+                    var speechRate by remember {
+                        mutableFloatStateOf(prefs.getFloat("speech_rate", 0.90f))
+                    }
+                    var speechPitch by remember {
+                        mutableFloatStateOf(prefs.getFloat("speech_pitch", 0.88f))
+                    }
+
+                    Divider(color = Color.DarkGray)
+                    Text("JARVIS voice clarity", color = Color(0xFF53D9FF), fontSize = 18.sp)
+                    Text("Speech speed: ${"%.2f".format(speechRate)}", color = Color.LightGray)
+                    Slider(
+                        value = speechRate,
+                        onValueChange = {
+                            speechRate = it
+                            prefs.edit().putFloat("speech_rate", it).apply()
+                        },
+                        valueRange = 0.75f..1.15f,
+                        steps = 7
+                    )
+                    Text("Voice pitch: ${"%.2f".format(speechPitch)}", color = Color.LightGray)
+                    Slider(
+                        value = speechPitch,
+                        onValueChange = {
+                            speechPitch = it
+                            prefs.edit().putFloat("speech_pitch", it).apply()
+                        },
+                        valueRange = 0.8f..1.2f,
+                        steps = 7
+                    )
+                    Text(
+                        "For clearer speech, start around 0.90–0.95 speed and 1.0 pitch. Actual voice quality depends on the speech engine installed on your phone.",
+                        color = Color.Gray,
+                        fontSize = 12.sp
+                    )
+
+                    OutlinedButton(
+                        onClick = {
+                            speechRate = 0.90f
+                            speechPitch = 0.88f
+                            prefs.edit()
+                                .putFloat("speech_rate", speechRate)
+                                .putFloat("speech_pitch", speechPitch)
+                                .apply()
+                            status = "Deep JARVIS voice preset saved. Restart the floating assistant to apply it."
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Apply deep JARVIS voice preset")
+                    }
 
                     Button(
                         onClick = {
